@@ -1,19 +1,19 @@
-# paramuda 1.0 alpha
+# Paramuda 1.0 alpha
 Paramuda is a python tool designed to enumerate hidden parameters on a target URL through a wordlist. It is designed to scan for URL by counting the existence of the payload in the response body. 
 
-### easy
+### EZ
 ```
 >python paramuda.py -u https://example.com/
 ```
 ![pr1](https://user-images.githubusercontent.com/11223632/68149146-01881580-ff46-11e9-87e4-9e96fb79c704.png)
 ![pr2](https://user-images.githubusercontent.com/11223632/68148717-334cac80-ff45-11e9-9c5f-8b2bebbcbb7b.png)
 
-### requirements
-Python 2 https://www.python.org/downloads/
-Requests lib ```pip install requests```
-Tested on windows 10 
+### Requirements
+- [Python 2](https://www.python.org/downloads/)
+- Requests lib ```pip install requests```
+- Tested on windows 10 
 
-### paramuda arguments 
+### Paramuda arguments 
 ```
 >python paramuda.py -h
 usage: paramuda [-h] [-v] (-u URL | -r REQUEST) [-w WORDLIST | -b {1,2,3}]
