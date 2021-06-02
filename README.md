@@ -1,7 +1,7 @@
-# Paramuda 1.0 alpha
+# Paramuda 2.0 alpha
 Paramuda is a python tool designed to enumerate hidden parameters on a target URL through a wordlist. It is designed to scan for URL by counting the existence of the payload in the response body. 
 
-### EZ
+### Usage
 ```
 >python paramuda.py -u https://example.com/
 ```
@@ -18,10 +18,11 @@ Paramuda is a python tool designed to enumerate hidden parameters on a target UR
 >python paramuda.py -h
 usage: paramuda [-h] [-v] (-u URL | -r REQUEST) [-w WORDLIST | -b {1,2,3}]
                 [-n NPARAMSPERREQ] [-t THREADS] [-p PAYLOAD]
+                [-e EXCLUDEPARAMS]
 
 ___________________________________________
 paramuda url params scan
-paramuda v.1.0 alpha
+paramuda v.2.0 alpha
 Author: Seif Elsallamy
 Github: https://github.com/seifelsallamy/paramuda
 ___________________________________________
@@ -35,12 +36,14 @@ optional arguments:
   -w WORDLIST, --wordlist WORDLIST
                         specific path to wordlist file
   -b {1,2,3}, --bruteforce {1,2,3}
-                        bruteforcing params level from 1 to 3 default = 2
+                        bruteforcing params level from 1 to 3 default = 1
   -n NPARAMSPERREQ, --nparamsperreq NPARAMSPERREQ
                         Number of parameters per request default=50
   -t THREADS, --threads THREADS
                         Number of threads default=5
   -p PAYLOAD, --payload PAYLOAD
                         Payload for testing default=qqq000
+  -e EXCLUDEPARAMS, --excludeParams EXCLUDEPARAMS
+                        Exclude parameters example "sid,firName,loginId"
 
 ```
