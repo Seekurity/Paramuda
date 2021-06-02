@@ -2,10 +2,13 @@ import threading
 import time
 import requests
 import argparse
+import re
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 __author__='Seif Elsallamy'
 
-__version__='1.0 alpha'
+__version__='2.0 alpha'
 
 __url__='https://github.com/seifelsallamy/paramuda'
 
@@ -33,11 +36,13 @@ l__j   l__j__jl__j\_jl__j__jl___j___j \__,_jl_____jl__j__j
 
 inputs = []
 dynamic = []
-def reqs(req, test):
+finalResult = []
+def reqs(req, test, isFinal):
     global debug
     global dynamic
     global nn
     global signature
+    global finalResult
     payload = "a"
     req = req.replace("$inject$",payload)
     req = req.split("\n")
@@ -69,13 +74,23 @@ def reqs(req, test):
             r = requests.get(path, headers=headers, proxies={"https":"127.0.0.1:8888"}, verify=False) #debug
         else:
             r = requests.get(path, headers=headers)
-        m = r.text
+        m = r.text + "zqzqzq" + str(r.headers)
         if test:
             return m
         if signature_check(m, nn, signature):
             dynamic.append(path)
-            print "[*] Detected a dynamic param on " + path
-            
+
+            if not isFinal:
+                print "[*] Detected a dynamic param on " + path
+
+            else:
+                if "&" in path:
+                    finalParam = path.split("&")[-1]
+                else:
+                    finalParam = path.split("?")[-1]
+
+                print "[*] Detected a dynamic param on " + path
+                finalResult.append(finalParam)
 
     else:
         m = "method not supported"
@@ -92,7 +107,7 @@ def X_Threading(nThreads, function): #X_Threading(15, printxy, [["x","y"]["hello
         if threading.activeCount() > nThreads: # if active threads bigger than nthreads stop for 0.1 second
             time.sleep(0.1)
             continue
-        if len(inputs) % 50 == 0:
+        if len(inputs) % 300 == 0:
             print "[*] " + str(len(inputs)) + " requests left"
         t = threading.Thread(target=function, args=(inputs.pop(0))) # send threads
         t.start()
@@ -104,7 +119,9 @@ def X_Threading(nThreads, function): #X_Threading(15, printxy, [["x","y"]["hello
     return 0
 lock = False
 def signature_check(output, n, signature):
-    #print output.count(signature) 
+    #print output.encode("utf8")
+    #print "[*] nn = " + str(n) + "count(payload)= " + str(output.count(signature)) 
+    
     global lock
     if lock == True:
         time.sleep(0.1)
@@ -112,13 +129,16 @@ def signature_check(output, n, signature):
     c = output.count(signature)
     if c != n:
         #print "[*] count(payload)=" + str(c) 
+        if output.split("zqzqzq")[1].count(signature):
+            print "in headers!"
         lock = False
+        
         return True
     else:
         lock = False
         return False
     
-def urls_generator(url, params, n, payload):
+def urls_generator(url, params, n, payload, isFinal):
     if url[:4] != "http":
         rr = url
         url = url.split(" ")[1]
@@ -134,7 +154,7 @@ def urls_generator(url, params, n, payload):
         param = params[i]
         if i!=0 and i % n == 0:
             curl = curl[:-1]
-            urls.append([r.replace("$URL$",curl), 0])
+            urls.append([r.replace("$URL$",curl), 0, isFinal])
             if "?" in url:
                 curl=url + "&"
             else:
@@ -147,7 +167,7 @@ def urls_generator(url, params, n, payload):
         for c in range(lost-1):
             p = p + "&0q"+ str(c) + "=" + payload
         curl = curl + p
-        urls.append([r.replace("$URL$",curl), 0])
+        urls.append([r.replace("$URL$",curl), 0, isFinal])
 
     return urls
 
@@ -179,21 +199,30 @@ def test_n(url, n, payload):
     else:
         nurl = url + "?" + p
     req=r.replace("$URL$",nurl)
-    r=reqs(req, 1)
-    return r.count(payload)
+    
+    r=reqs(req, 1, False)
+    o=cleanString = re.sub('\W+',' ', r ).split(" ")
+    o = list(set(o))
+    return [r.count(payload), o]
     
 
 #Program start
 
 
-def go(url, payload, n, tn, params):
+def go(url, payload, n, tn, params, blackList):
 
     global inputs
     global dynamic
     global nn
     global signature
+    global finalResult
+    
     #Calculating normal n
-    nn = test_n(url, n, payload)
+    result = test_n(url, n, payload)
+    nn = result[0]
+    o = result[1] #wordlist generator
+    params = list(set(params+o))
+    params = list(set(params) - set(blackList.split(",")))
     print "[*] Setting url/req to " + url
     print "[*] Setting params per req to " + str(n)
     print "[*] Setting payload to " + payload
@@ -203,7 +232,7 @@ def go(url, payload, n, tn, params):
     signature = payload
     #Generating requests
     print "[*] Generating requests"
-    rs = urls_generator(url, params, n, payload)
+    rs = urls_generator(url, params, n, payload, False)
     print "[*] " + str(len(rs)) + " Requests"
     print "[*] Start sending threads"
 
@@ -237,7 +266,7 @@ def go(url, payload, n, tn, params):
     #tn = 5 #threads
 
     #Calculating normal n
-    nn = test_n(url, n, payload)
+    nn = test_n(url, n, payload)[0]
     print "[*] Setting url to " + url
     print "[*] Setting params per req to " + str(n)
     print "[*] Setting payload to " + payload
@@ -247,7 +276,7 @@ def go(url, payload, n, tn, params):
     signature = payload
     #Generating requests
     print "[*] Generating requests"
-    rs = urls_generator(url, params, n, payload)
+    rs = urls_generator(url, params, n, payload, True)
     print "[*] " + str(len(rs)) + " Requests"
     print "[*] Start sending threads"
 
@@ -256,6 +285,18 @@ def go(url, payload, n, tn, params):
     inputs = rs    
     X_Threading(tn, reqs)
 
+    time.sleep(5)
+
+    finalResultString1 = ""
+    finalResultString2 = ""
+    for finalResultString in finalResult:
+        finalResultString1 = finalResultString1 + finalResultString.split("=")[0] + ","
+        finalResultString2 = finalResultString2 + finalResultString + "&"
+    print "\n"
+    print finalResultString1
+    print "\n"
+    print finalResultString2
+        
 
 
 
@@ -273,11 +314,13 @@ def main():
 
     group2 = parser.add_mutually_exclusive_group(required=False)
     group2.add_argument('-w', '--wordlist',type=str, help='specific path to wordlist file', required=False)
-    group2.add_argument('-b', '--bruteforce',type=int, choices=[1,2,3], help='bruteforcing params level from 1 to 3 default = 2', required=False, default=2)
+    group2.add_argument('-b', '--bruteforce',type=int, choices=[1,2,3], help='bruteforcing params level from 1 to 3 default = 1', required=False, default=1)
 
     parser.add_argument('-n', '--nparamsperreq', type=int, help='Number of parameters per request default=50', required=False, default=50)
     parser.add_argument('-t', '--threads', type=int , help='Number of threads default=5', required=False, default=5)
     parser.add_argument('-p', '--payload' , type=str, help='Payload for testing default=qqq000', required=False, default="qqq000")
+    parser.add_argument('-e', '--excludeParams' , type=str, help='Exclude parameters example "sid,firName,loginId"', required=False, default="")
+
     args = parser.parse_args()
 	
     url = args.url
@@ -287,7 +330,7 @@ def main():
     n = args.nparamsperreq
     tn = args.threads
     payload = args.payload
-
+    blackList = args.excludeParams
     print_banner()
 
     if request is not None:
@@ -336,7 +379,7 @@ def main():
     
     
 
-    go(url, payload, n, tn, wordlist)
+    go(url, payload, n, tn, wordlist, blackList)
 
 debug = 0
 main()
